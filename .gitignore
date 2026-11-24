@@ -1,0 +1,30 @@
+# Dependências / build / logs
+node_modules/
+dist/
+coverage/
+*.log
+*.tsbuildinfo
+.DS_Store
+storage/
+.turbo/
+
+# Segredos e dados locais (nunca versionar)
+.env
+.env.*
+prisma/*.db
+prisma/*.db-journal
+CREDENCIAIS.txt
+
+# ---------------------------------------------------------------------------
+# Portfólio público — o CÓDIGO-FONTE permanece privado e não é versionado.
+# Este repositório publica apenas o portfólio (README) e a documentação (docs/).
+# ---------------------------------------------------------------------------
+apps/
+packages/
+infra/
+package.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+tsconfig.base.json
+turbo.json
+.env.example

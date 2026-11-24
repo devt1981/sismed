@@ -146,7 +146,7 @@ flowchart LR
         CONN[Camada de Integração<br/>Ultrasis Connector]
         ING[Ingestão e Normalização<br/>+ OCR]
         STORE[(Armazenamento local<br/>documentos criptografados)]
-        DB[(PostgreSQL local<br/>metadados, casos, auditoria)]
+        DB[(SQLite local<br/>metadados, casos, auditoria)]
         AI[Motor de IA<br/>Extração + Geração]
         TPL[Motor de Modelos<br/>e Regras]
         UI[Workspace de Revisão<br/>Web]
@@ -180,7 +180,7 @@ flowchart LR
 - **Human-in-the-loop obrigatório**: a IA rascunha; a médica revisa e aprova.
 - **Configuração sem código**: modelos, orientações, condutas e regras são dados, não código.
 - **Segurança e auditoria por padrão**: criptografia, RBAC, trilha imutável, minimização de dados.
-- **Stack alinhada ao monorepo React + NestJS + Prisma/PostgreSQL**.
+- **Stack alinhada ao monorepo React + NestJS + Prisma/SQLite**.
 
 ### 4.1 Modelo de implantação: local (LAN) ou nuvem, sempre no navegador
 
@@ -289,7 +289,7 @@ separação de credenciais por ambiente e **observabilidade** (logs/métricas de
 - **Extração de texto**: parsing do **PDF do laudo**; **OCR** (ex.: Tesseract ou OCR gerenciado)
   quando o PDF for digitalizado (imagem sem camada de texto).
 - **Armazenamento**: PDFs e derivados em *object storage* com **criptografia em repouso** (AES-256,
-  KMS) e **URLs assinadas de curta duração**; metadados e versões no PostgreSQL. **Não** persistir a
+  KMS) e **URLs assinadas de curta duração**; metadados e versões no SQLite. **Não** persistir a
   `pdf_url` do Ultrasis (é assinada e expira) — baixar e arquivar a cópia própria.
 - **Ciclo de vida**: políticas de retenção e descarte conforme LGPD.
 

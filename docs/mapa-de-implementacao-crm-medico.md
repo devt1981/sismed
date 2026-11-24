@@ -85,7 +85,7 @@ documentadas.
 **Objetivo:** entregar o fluxo fim a fim de ponta a ponta, com gatilho **manual**.
 
 **Tarefas**
-1. **Fundação:** monorepo, CI, Docker Compose (`api`, `web`, `postgres`, `redis`, `minio`).
+1. **Fundação:** monorepo, CI, Docker Compose (`api`, `web`, `redis`, `minio`) — banco **SQLite** (arquivo, sem instalação).
 2. **Autenticação e RBAC:** login, perfis `medico` e `secretaria`, escopo por médico.
 3. **CRM/agenda:** cadastro de pacientes (CPF), agenda, origem de CPFs para o *polling*.
 4. **Ultrasis Connector:** *adapter* dos 4 endpoints + *polling*/busca idempotente.
@@ -184,7 +184,7 @@ completo pela médica, sem desenvolvedor.
 |---|---|---|---|
 | Backend | **NestJS** | 10+ | Modular, testável, alinhado ao monorepo |
 | Frontend | **React + Vite** | 18+ | Simples, rápido, familiar |
-| ORM/DB | **Prisma + PostgreSQL** | 16 | Tipagem forte, migrações, auditoria |
+| ORM/DB | **Prisma + SQLite** | 3 | Tipagem forte, migrações, auditoria; banco em arquivo, sem instalação |
 | Monorepo | **pnpm + Turborepo** | atual | Builds e cache |
 | Fila/jobs | **BullMQ + Redis** | atual | *Polling*, OCR, ingestão assíncrona |
 | Armazenamento | **Filesystem local / MinIO** | — | Documentos cifrados; LAN ou nuvem |
@@ -226,7 +226,7 @@ crm-medico/
 │  ├─ ai-engine/           # extração + geração (provider-agnostic)
 │  └─ templates/           # schemas de modelos e regras
 ├─ infra/
-│  ├─ docker/              # docker-compose (api, web, postgres, redis, minio)
+│  ├─ docker/              # docker-compose (api, web, redis, minio)
 │  └─ scripts/             # instalador (pergunta "este PC será o servidor?")
 ├─ prisma/
 │  └─ schema.prisma

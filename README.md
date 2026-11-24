@@ -1,300 +1,177 @@
-# CRM-Medico — Módulo de Comunicação Clínica Assistida por IA
+# CRM-Medico
 
-> **Repositório oficial:** `crm-medico`  
-> **Natureza:** CRM clínico + módulo de comunicação assistida por IA, com integração ao Ultrasis
+### CRM clínico + comunicação assistida por IA, integrado ao Ultrasis
 
----
+> Plataforma que transforma laudos de colposcopia (Ultrasis) em **comunicações personalizadas
+> e prontas para revisão** — uma em linguagem simples para a paciente e outra técnica para o
+> médico solicitante — com **revisão humana obrigatória** e **envio assistido por WhatsApp**.
 
-## 📋 Visão Geral
-
-O **CRM-Medico** é um sistema que complementa o **Ultrasis** (software de gestão de laudos e imagens médicas) com uma camada de inteligência artificial para **geração assistida de comunicações clínicas**.
-
-### Objetivo Principal
-
-Após a conclusão do laudo de colposcopia e a chegada dos exames complementares (biópsias, citologia, HPV, imagens), o sistema gera **automaticamente duas comunicações para revisão da médica**:
-
-1. **📝 Mensagem acessível à paciente** — linguagem simples, acolhedora, seguindo o padrão de comunicação da clínica
-2. **🩺 Mensagem técnica ao médico responsável/solicitante** — achados colposcópicos (protocolo IFCPC), resultados dos exames complementares, interpretação e condutas sugeridas
-
-> **⚠️ Importante:** Nenhuma mensagem é enviada sem **revisão e aprovação humana**. A médica pode editar o texto, inserir medicamentos, orientações e condutas antes do envio pelo WhatsApp.
+![CRM-Medico — Painel](docs/assets/screenshot-dashboard.png)
 
 ---
 
-## 🏗️ Arquitetura
+## Visão geral
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         CRM-Medico - Módulo de Comunicação Clínica          │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌───────────┐  │
-│  │   Ultrasis   │───▶│   Connector  │───▶│  Ingestão &  │───▶│ Armazenamento│  │
-│  │   API v2     │    │  (Adapter)   │    │  Normalização│    │  Cifrado    │  │
-│  └──────────────┘    └──────────────┘    └──────────────┘    └───────────┘  │
-│                                                                              │
-│         │                                          │                         │
-│         ▼                                          ▼                         │
-│  ┌──────────────┐                          ┌──────────────┐                │
-│  │   PostgreSQL │◀───┐                  ┌───▶│  Motor de IA │                │
-│  │  (Metadados, │    │                  │    │  (Extração + │                │
-│  │   Casos,     │    │                  │    │   Geração)   │                │
-│  │  Auditoria)  │    │                  │    └──────┬───────┘                │
-│  └──────────────┘    │                  │           │                        │
-│                      │           ┌──────┴───────┐   │                        │
-│         ┌────────────┴──────────▶│ Motor de     │   │                        │
-│         │                        │ Modelos/Regras│◀──┘                        │
-│         │                        └──────┬───────┘                            │
-│         │                               │                                    │
-│         ▼                               ▼                                    │
-│  ┌──────────────┐                ┌──────────────┐                           │
-│  │   Workspace  │◀───────────────│   Geração    │                           │
-│  │  de Revisão  │   (Humano no   │  de Rascunhos│                           │
-│  │   (Web UI)   │    Loop)       │              │                           │
-│  └──────┬───────┘                └──────────────┘                           │
-│         │                                                                   │
-│         ▼                                                                   │
-│  ┌──────────────┐                                                         │
-│  │   Envio      │                                                         │
-│  │  WhatsApp    │                                                         │
-│  │ (Assistido → │                                                         │
-│  │  Oficial)    │                                                         │
-│  └──────────────┘                                                         │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+O **CRM-Medico** complementa o **Ultrasis** (software de gestão de laudos e imagens médicas)
+com uma camada de inteligência artificial para **geração assistida de comunicações clínicas**
+e um **CRM de atendimento** (pacientes, fila de recepção e prontuário eletrônico).
 
-### Princípios de Projeto
+Após a conclusão do laudo e a chegada dos exames complementares (biópsia, citologia, HPV,
+imagens), o sistema gera **duas comunicações para revisão da médica**:
 
-- **Desacoplamento da integração** (padrão *Adapter*): a IA, os modelos, a interface e o envio não conhecem o Ultrasis
-- **Human-in-the-loop obrigatório**: a IA rascunha; a médica revisa e aprova
-- **Configuração sem código**: modelos, orientações, condutas e regras são dados, não código
-- **Segurança e auditoria por padrão**: criptografia, RBAC, trilha imutável, minimização de dados
+1. **Mensagem à paciente** — linguagem simples, acolhedora e sem jargão técnico.
+2. **Mensagem técnica ao médico solicitante** — achados colposcópicos (protocolo IFCPC),
+   resultados complementares, interpretação e condutas sugeridas.
+
+> ⚠️ **Human-in-the-loop obrigatório.** Nenhuma mensagem é enviada automaticamente: a médica
+> revisa, edita e aprova antes de qualquer disparo.
 
 ---
 
-## 🚀 Stack Tecnológica
+## Destaques
 
-| Camada | Tecnologia | Versão |
-|--------|------------|--------|
-| **Backend** | NestJS | 10+ |
-| **Frontend** | React + Vite | 18+ |
-| **ORM/DB** | Prisma + PostgreSQL | 16 |
-| **Monorepo** | pnpm + Turborepo | atual |
-| **Fila/Jobs** | BullMQ + Redis | atual |
-| **Armazenamento** | Filesystem local / MinIO | — |
-| **OCR/PDF** | Tesseract.js / pdf-parse | — |
-| **IA (LLM)** | Gateway provider-agnostic (OpenAI/Anthropic/Gemini/Ollama) | — |
-| **WhatsApp** | Deep link `wa.me` (MVP) → Meta Cloud API (oficial) | — |
-| **Autenticação** | JWT (access+refresh) + RBAC; argon2id | — |
-| **Validação** | zod | — |
-| **Testes** | Jest + Supertest + Playwright | — |
-| **Qualidade** | ESLint + Prettier + commitlint + husky | — |
-| **Deploy** | Docker Compose (LAN) / VM na nuvem | — |
-| **Descoberta** | bonjour-service (mDNS) | — |
-| **Observabilidade** | pino (logs) + auditoria própria | — |
+- **Geração assistida por IA** — extração dos laudos + geração de duas mensagens (paciente e técnico).
+- **Revisão humana** — workspace de revisão/edição com aprovação antes do envio.
+- **Envio pelo WhatsApp** — via deep link `wa.me` (MVP) ou Meta Cloud API (oficial), com confirmação de envio.
+- **Prontuário eletrônico** — evoluções no padrão SOAP, histórico clínico e prescrições.
+- **Recepção / atendimento** — cadastro de pacientes, agendamento, fila do dia e check-in.
+- **Controle de acesso (RBAC)** — hierarquia **Administrador (owner) > Médico(a) > Secretária**,
+  com menus e rotas restritos por perfil.
+- **Confidencialidade por perfil** — o **envio de laudos é exclusivo do perfil médico**; a
+  atendente **não tem acesso** ao histórico clínico nem ao histórico de envios.
+- **Segurança e LGPD** — criptografia AES-256-GCM em repouso, pseudonimização antes do LLM e
+  trilha de auditoria imutável (*append-only*).
 
-**Linguagem principal:** TypeScript  
-**Runtime:** Node.js 20 LTS
+### Telas
+
+**Central de WhatsApp — envio de laudos (exclusivo do médico)**
+
+![CRM-Medico — WhatsApp](docs/assets/screenshot-whatsapp.png)
 
 ---
 
-## 📦 Estrutura do Repositório (Monorepo)
+## Stack tecnológica
 
-```
-crm-medico/
-├─ apps/
-│  ├─ api/                 # NestJS (backend + jobs)
-│  └─ web/                 # React + Vite (frontend)
-├─ packages/
-│  ├─ contracts/           # DTOs/tipos + schemas zod (compartilhados)
-│  ├─ ui/                  # design system
-│  ├─ ultrasis-connector/  # Adapter da API Ultrasis v2
-│  ├─ ai-engine/           # extração + geração (provider-agnostic)
-│  └─ templates/           # schemas de modelos e regras
-├─ infra/
-│  ├─ docker/              # docker-compose (api, web, postgres, redis, minio)
-│  └─ scripts/             # instalador (pergunta "este PC será o servidor?")
-├─ prisma/
-│  └─ schema.prisma
-└─ docs/
+| Camada | Tecnologia |
+|--------|------------|
+| Monorepo | pnpm + Turborepo |
+| Backend | NestJS (TypeScript) |
+| Frontend | React + Vite |
+| ORM / Banco | Prisma + SQLite (arquivo local, sem instalação) |
+| Contratos | Pacote compartilhado de tipos + zod |
+| IA (LLM) | Gateway provider-agnostic (mock / OpenAI / Anthropic / Ollama) |
+| WhatsApp | Deep link `wa.me` (MVP) → Meta Cloud API (oficial) |
+| Extensão | Extensão de navegador (Chrome) para o WhatsApp Web |
+| Autenticação | JWT (access + refresh) + RBAC |
+| Deploy | Docker Compose (LAN) / VM na nuvem |
+
+---
+
+## Requisitos
+
+- **Node.js 20 LTS** ou superior
+- **pnpm 8+** (`npm i -g pnpm`)
+- **Git**
+- **SQLite** — embutido no Prisma, **não requer instalação**
+- **Docker Desktop** — *opcional* (apenas para Redis/MinIO em recursos de fila/armazenamento)
+- Navegador moderno (Chrome/Edge) para uso do sistema e da extensão de WhatsApp
+
+---
+
+## Instalação
+
+```bash
+# 1. Clonar o repositório
+git clone https://github.com/devt1981/sismed.git crm-medico
+cd crm-medico
+
+# 2. Instalar as dependências
+pnpm install
+
+# 3. Configurar variáveis de ambiente
+cp .env.example .env
+#    Edite o .env com: DATABASE_URL, segredos JWT,
+#    DOCS_ENCRYPTION_KEY (openssl rand -base64 32) e credenciais do Ultrasis.
+
+# 4. Criar o banco SQLite e aplicar as migrações
+pnpm prisma:migrate
+
+# 5. Popular dados iniciais (admin, modelos e regras)
+pnpm seed
+
+# 6. Iniciar em modo desenvolvimento (API + Web)
+pnpm dev
 ```
 
----
+Após subir:
 
-## 🔄 Fases de Implementação
+| Serviço | Endereço |
+|---------|----------|
+| Frontend (Web) | `http://localhost:5173` |
+| API | `http://localhost:3000/api` |
 
-```mermaid
-flowchart LR
-    F0["F0 — Homologação e conformidade<br/>(sem código de produção)"]
-    F1["F1 — MVP<br/>busca manual + IA + revisão<br/>+ envio assistido"]
-    F2["F2 — Automação de exames<br/>complementares"]
-    F3["F3 — Envio oficial WhatsApp<br/>+ autonomia plena"]
-    F0 --> F1 --> F2 --> F3
+### Scripts principais
+
+```bash
+pnpm dev            # Desenvolvimento (API + Web)
+pnpm build          # Build de produção (todos os pacotes)
+pnpm test           # Testes
+pnpm lint           # Lint
+pnpm prisma:studio  # Prisma Studio (inspeção do banco)
+pnpm prisma:migrate # Migrações do banco
+pnpm seed           # Dados iniciais
 ```
 
-| Fase | Objetivo Central | Entregável Principal |
-|------|------------------|----------------------|
-| **F0** | Homologar a integração e fechar conformidade (LGPD, contratos, DPA do LLM) | Relatório de homologação, ADRs, DPA assinado, RIPD/ROPA |
-| **F1** | MVP completo: laudo → IA → 2 mensagens → revisão → envio assistido | Aplicação executável nos dois modos (LAN/nuvem) |
-| **F2** | Ingestão automática de biópsias/anexos (pasta/e-mail) e polling por período | Documentos chegam automaticamente como pendência de revisão |
-| **F3** | Envio pela API Oficial do WhatsApp + autonomia total de modelos/regras | Envio oficial rastreável (entregue/lido) + editor completo |
-
----
-
-## 📚 Documentação
-
-| Documento | Descrição |
-|-----------|-----------|
-| [MAPA_DE_IMPLEMENTACAO.md](./docs/MAPA_DE_IMPLEMENTACAO.md) | Mapa detalhado de implementação: fases, tarefas, entregáveis, critérios de aceite, requisitos técnicos, stack, LGPD |
-| [PROPOSTA_INTEGRACAO_ULTRASIS.md](./docs/PROPOSTA_INTEGRACAO_ULTRASIS.md) | Proposta técnica e arquitetura: contexto, API Ultrasis, arquitetura, implantação LAN/nuvem |
-| [ARQUITETURA.md](./docs/ARQUITETURA.md) | Documento de arquitetura detalhada (decisiones técnicas, ADRs) |
-| [LGPD_CONFORMIDADE.md](./docs/LGPD_CONFORMIDADE.md) | Checklist e evidências de conformidade com a LGPD |
-| [GUIA_INSTALACAO.md](./docs/GUIA_INSTALACAO.md) | Guia de instalação e configuração (modo LAN e nuvem) |
-| [GUIA_DESENVOLVEDOR.md](./docs/GUIA_DESENVOLVEDOR.md) | Guia para desenvolvedores: setup, padrões, workflows |
-
----
-
-## 🔐 Segurança e Conformidade (LGPD)
-
-> **Dados de saúde são dados pessoais sensíveis (art. 5º, II da LGPD).** O tratamento exige base legal específica do **art. 11** e atenção redobrada.
-
-### Medidas Implementadas
-
-- ✅ **Criptografia:** TLS 1.2+ em trânsito; AES-256-GCM em repouso (documentos e backups)
-- ✅ **Pseudonimização** antes de enviar conteúdo ao LLM
-- ✅ **RBAC** com escopo (secretaria sem acesso clínico; médico por escopo)
-- ✅ **Trilha de auditoria imutável** (append-only) de operações sensíveis
-- ✅ **DPA** assinado com provedor de LLM (sem uso dos dados para treino; região; retenção)
-- ✅ **Encarregado (DPO)** nomeado; canal de contato publicado
-- ✅ **ROPA** e **RIPD/DPIA** elaborados
-- ✅ **Política de retenção/eliminação** definida
-- ✅ **Plano de resposta a incidentes** (art. 48 LGPD)
-
-### Bases Legais
-
-| Dado | Categoria | Base Legal (LGPD) |
-|------|-----------|-------------------|
-| Laudos/achados clínicos | **Sensível** | Art. 11, II, "f" — tutela da saúde |
-| Identificação (nome, CPF) | Pessoal | Art. 7º, VIII — proteção da saúde |
-| Contato (telefone) | Pessoal | Art. 7º, VIII / Art. 11, I (consentimento para canal) |
-| Registros de acesso/envio | Log | Art. 7º, X / Art. 16 — obrigação legal/auditoria |
-
----
-
-## 🖥️ Modos de Implantação
+### Modos de implantação
 
 | Modo | Onde roda o servidor | Como se acessa |
 |------|----------------------|----------------|
-| **Local (LAN)** | PC da clínica (escolhido na instalação) | `localhost` no servidor; `http://crm-medico.local` nas estações |
+| **Local (LAN)** | PC da clínica | `localhost` no servidor; `http://crm-medico.local` nas estações |
 | **Nuvem** | VM/servidor na nuvem | Domínio próprio com TLS |
 
-> O **mesmo código** roda nos dois modos. O instalador pergunta: *"este PC será o servidor?"*
+> O **mesmo código** roda nos dois modos; o instalador pergunta *"este PC será o servidor?"*.
 
 ---
 
-## 🛠️ Como Começar (Desenvolvimento)
+## Segurança e conformidade (LGPD)
 
-### Pré-requisitos
+> Dados de saúde são **dados pessoais sensíveis** (LGPD, art. 5º, II) e exigem base legal do art. 11.
 
-- Node.js 20 LTS
-- pnpm 8+
-- Docker Desktop
-- PostgreSQL 16 (via Docker)
-- Redis 7 (via Docker)
-
-### Setup Inicial
-
-```bash
-# Clonar repositório
-git clone <url-do-repositorio> crm-medico
-cd crm-medico
-
-# Instalar dependências
-pnpm install
-
-# Subir infraestrutura local
-cd infra/docker
-docker-compose up -d
-
-# Configurar variáveis de ambiente
-cp .env.example .env
-# Editar .env com suas configurações
-
-# Rodar migrações
-pnpm prisma:migrate
-
-# Iniciar em modo desenvolvimento
-pnpm dev
-```
-
-### Scripts Principais
-
-```bash
-# Desenvolvimento (API + Web)
-pnpm dev
-
-# Build de produção
-pnpm build
-
-# Testes
-pnpm test           # Unitários
-pnpm test:e2e       # End-to-end (Playwright)
-
-# Lint & Format
-pnpm lint
-pnpm format
-
-# Banco de dados
-pnpm prisma:studio  # Abre Prisma Studio
-pnpm prisma:migrate # Roda migrações
-```
+- **Criptografia** — TLS 1.2+ em trânsito; AES-256-GCM em repouso (documentos e tokens de integração).
+- **Pseudonimização** — antes de enviar conteúdo ao LLM.
+- **RBAC com escopo** — secretaria sem acesso clínico; médico restrito ao próprio escopo.
+- **Trilha de auditoria imutável** (*append-only*) das operações sensíveis.
+- **Minimização de dados** — apenas o necessário é processado/persistido.
 
 ---
 
-## 📖 Referências da API Ultrasis
+## Documentação
 
-- **Base URL:** `https://apiv2.ultrasis.life`
-- **Autenticação:** `Authorization: SEU_TOKEN` (token estático, um por base/cliente)
-- **Métodos:** Apenas `GET` (API de leitura)
-- **Endpoints:**
-  - `GET /status` — Health check
-  - `GET /paciente/{cpf}` — Dados do paciente
-  - `GET /laudos/{id}` — Lista laudos do paciente
-  - `GET /laudo/{id}` — Laudo específico + `pdf_url` (assinado, expira)
-
-> ⚠️ **Lacunas conhecidas:** Sem endpoint de listagem por período; sem anexos/imagens; sem webhook; PDF não estruturado. Ver documentação completa em `docs/PROPOSTA_INTEGRACAO_ULTRASIS.md`.
+| Documento | Descrição |
+|-----------|-----------|
+| [MAPA_DE_IMPLEMENTACAO.md](docs/MAPA_DE_IMPLEMENTACAO.md) | Mapa de implementação: fases, entregáveis, requisitos |
+| [mapa-de-implementacao-crm-medico.md](docs/mapa-de-implementacao-crm-medico.md) | Plano detalhado do projeto |
+| [proposta-integracao-ultrasis.md](docs/proposta-integracao-ultrasis.md) | Arquitetura e integração com a API Ultrasis v2 |
+| [documentacao-api-ultrasis-v2-1.pdf](docs/documentacao-api-ultrasis-v2-1.pdf) | Referência da API Ultrasis v2 |
 
 ---
 
-## 🤝 Contribuindo
+## Sobre este repositório
 
-1. Fork o repositório
-2. Crie uma branch: `feature/nome-da-feature` ou `fix/nome-do-fix`
-3. Faça suas alterações seguindo [Conventional Commits](https://www.conventionalcommits.org/)
-4. Rode os testes: `pnpm test && pnpm test:e2e`
-5. Abra um Pull Request
+Este é o **portfólio público** do projeto. Ele publica **apenas a documentação, as imagens e
+estas informações de requisitos e instalação**.
 
-### Padrões de Código
-
-- **Feature-based folders**; injeção de dependência; sem lógica de negócio em controllers
-- Cobertura mínima de testes acordada por módulo
-- **Secrets nunca no repositório** (uso de `.env` local + cofre em produção)
+O **código-fonte é privado** e **não é versionado aqui** — os diretórios de código
+(`apps/`, `packages/`, `infra/` e arquivos de configuração do monorepo) estão
+intencionalmente fora deste repositório (ver [`.gitignore`](.gitignore)).
 
 ---
 
-## 📄 Licença
+## Licença
 
-Projeto proprietário — todos os direitos reservados.
+Projeto **proprietário** — todos os direitos reservados.
 
----
-
-## 📞 Contato
+## Contato
 
 - **Projeto:** CRM-Medico
-- **Cliente:** Dra. / Clínica (usuária de Ultrasis)
-- **Documento de referência:** [Mapa de Implementação](./docs/MAPA_DE_IMPLEMENTACAO.md)
 - **Versão:** 1.0
-
----
-
-> **Nota:** Este repositório contém o código-fonte e a documentação técnica do projeto CRM-Medico. Para detalhes de implementação, consulte o [Mapa de Implementação](./docs/MAPA_DE_IMPLEMENTACAO.md) e a [Proposta de Integração](./docs/PROPOSTA_INTEGRACAO_ULTRASIS.md).
